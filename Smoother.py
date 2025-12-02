@@ -463,7 +463,7 @@ def make_forced_problem(N):
     f += Xf_u**2
 
     # build g on v-face locations: g = -Delta v + dp/dy (dp/dy = 0 here)
-    g = -4.0 * np.pi**2 * (2.0 * np.cos(2.0*np.pi*Yf_v) - 1.0) * np.sin(2.0*np.pi*Xf_v)
+    g = 4.0 * np.pi**2 * (2.0 * np.cos(2.0*np.pi*Yf_v) - 1.0) * np.sin(2.0*np.pi*Xf_v)
 
     return {
         'u_exact_faces': u_exact_faces,
