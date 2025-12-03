@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from Solvers import solve_problem_1
+from Solvers import solve_problem_1, solve_problem_2
 
-def plot_solution(N, u, v, p, u_ex, v_ex, p_ex):
+def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
     h = 1.0 / N
     Xp, Yp = np.meshgrid(np.linspace(h/2, 1-h/2, N), np.linspace(h/2, 1-h/2, N), indexing='ij')
     
@@ -40,14 +40,14 @@ def plot_solution(N, u, v, p, u_ex, v_ex, p_ex):
     axs[1,2].set_title('Exact P')
 
     plt.tight_layout()
-    plt.savefig(f'stokes_solution_N{N}.png')
+    plt.savefig(f'stokes_solution_N={N}_method={method_idx}.png')
     plt.close()
 
 def main():
     Ns = [256] # 可以尝试 128
     results = []
     
-    print("Start Problem 1 (V-Cycle with DGS)...")
+    print("Start Problem 1 (DGS as Smoother V-cycle)...")
     
     for N in Ns:
         iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_1(N)
@@ -58,7 +58,7 @@ def main():
             'Error L2': err
         })
         
-        plot_solution(N, u, v, p, u_ex, v_ex, p_ex)
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 1)
         
     df = pd.DataFrame(results)
     print("\nResults Summary:")
