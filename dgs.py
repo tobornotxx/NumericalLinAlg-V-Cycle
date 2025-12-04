@@ -49,7 +49,7 @@ def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     # 2. Residuals
     r_u, r_v, r_div_computed = compute_residuals_stokes(u, v, p, f, g, h, bcs)
     
-    print(f'r_div_comp[0,0]:{r_div_computed[0,0]:.2e}')
+    # print(f'r_div_comp[0,0]:{r_div_computed[0,0]:.2e}')
     if g_div is not None:
         r_div_real = r_div_computed + g_div
     else:
@@ -99,7 +99,7 @@ def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     r_u_post, r_v_post, r_div_post = compute_residuals_stokes(u, v, p, f, g, h, bcs)
     norm_post = np.linalg.norm(r_u_post) + np.linalg.norm(r_v_post) + np.linalg.norm(r_div_post)
     
-    print(f"[Level N={N}] Smoothing Check: Pre={norm_pre:.4e} -> Post={norm_post:.4e}")
+    # print(f"[Level N={N}] Smoothing Check: Pre={norm_pre:.4e} -> Post={norm_post:.4e}")
     # if norm_post > norm_pre:
     #     print("!!! SMOOTHER IS DIVERGING !!!")
         

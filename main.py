@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from Solvers import solve_problem_1, solve_problem_2
+from Solvers import solve_problem_1, solve_problem_2, solve_problem_3
 
 def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
     h = 1.0 / N
@@ -47,10 +47,10 @@ def main():
     Ns = [256] # 可以尝试 128
     results = []
     
-    print("Start Problem 1 (DGS as Smoother V-cycle)...")
+    print("Start Problem 3 (Inexact Uzawa)...")
     
     for N in Ns:
-        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_1(N)
+        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_3(N)
         results.append({
             'N': N,
             'Iterations': iters,
@@ -58,7 +58,7 @@ def main():
             'Error L2': err
         })
         
-        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 1)
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 3)
         
     df = pd.DataFrame(results)
     print("\nResults Summary:")
