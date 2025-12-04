@@ -281,6 +281,10 @@ def dgs_step(u, v, p, f, g, h, bcs, g_div=None):
     return u, v, p
 
 
+
+# 以下是测试代码，检验DGS是否能正确迭代到近似收敛，直接运行本文件可以看到结果和图片，然而，与最终结果无关。
+
+
 def make_forced_problem(N):
     # grid spacing
     h = 1.0 / N
@@ -321,7 +325,6 @@ def make_forced_problem(N):
         'Xc': Xc, 'Yc': Yc
     }
 
-# ---------- runner: do iterations and produce plots ----------
 def run_dgs_manufactured(N=64, max_iter=800, omega=0.9, n_smooth=1, verbose=True):
     h = 1.0 / N
     prob = make_forced_problem(N)

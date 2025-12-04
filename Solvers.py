@@ -2,13 +2,11 @@ import numpy as np
 import time
 from Operators import compute_residuals_stokes, apply_gradient_p
 from TrueSolution import get_exact_solution
-from dgs import v_cycle_recursive
+from vcycle import v_cycle_recursive, v_cycle_velocity
 from Uzawa import uzawa_step
-from InexactUzawa import v_cycle_velocity
 
 
-
-def solve_problem_1(N, tol=1e-8, max_iter=20):
+def solve_problem_1(N, tol=1e-8, max_iter=10000):
     h = 1.0 / N
     u = np.zeros((N + 1, N))
     v = np.zeros((N, N + 1))
@@ -54,7 +52,7 @@ def solve_problem_1(N, tol=1e-8, max_iter=20):
         norm_r = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
         
         ratio = norm_r / norm_r0
-        print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
+        # print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
         
         if np.isnan(norm_r) or np.isinf(norm_r):
             print("Diverged!")
@@ -72,8 +70,6 @@ def solve_problem_1(N, tol=1e-8, max_iter=20):
     
     print(f"Done N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}")
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
-
-
 
 def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     '''
@@ -128,12 +124,10 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
         
         ratio = norm_r / norm_r0
         
-        if k % 100 == 0:
-            print(f"Iter {k}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
             
         if ratio <= tol:
             iters = k + 1
-            print(f"Converged at iter {k+1}, Ratio = {ratio:.4e}")
+            # print(f"Converged at iter {k+1}, Ratio = {ratio:.4e}")
             break
             
         if np.isnan(norm_r) or norm_r > 1e10:
@@ -153,7 +147,7 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
 
-def solve_problem_3(N, tol=1e-8, max_iter=20):
+def solve_problem_3(N, tol=1e-8, max_iter=100):
     """
     Solve Stokes using Inexact Uzawa:
         A u^{k+1} = f - B p^k      (approx solved by V-cycle for velocity)
@@ -240,7 +234,8 @@ def solve_problem_3(N, tol=1e-8, max_iter=20):
         norm_r = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
 
         ratio = norm_r / norm_r0
-        print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
+
+        # print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
 
         if np.isnan(norm_r) or np.isinf(norm_r):
             print("Diverged!")

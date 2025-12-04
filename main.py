@@ -44,14 +44,61 @@ def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
     plt.close()
 
 def main():
-    Ns = [256] # 可以尝试 128
-    results = []
+    Ns = [64, 128, 256] 
+    results_1 = []
+
+    print("Start Problem 1 (V-Cycle with DGS smoother)...")
     
+    for N in Ns:
+        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_1(N)
+        results_1.append({
+            'N': N,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
+        
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 1)
+        
+    df = pd.DataFrame(results_1)
+    print("\nResults Summary:")
+    print(df)
+    
+    if len(df) >= 2:
+        error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
+        order = np.log2(error_ratio)
+        print(f"\nEstimated Convergence Order: {order:.2f}")
+
+    results2 = []
+
+    print("Start Problem 2 (Uzawa Iteration Method)...")
+    
+    for N in Ns:
+        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_2(N)
+        results2.append({
+            'N': N,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
+        
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 2)
+        
+    df = pd.DataFrame(results2)
+    print("\nResults Summary:")
+    print(df)
+    
+    if len(df) >= 2:
+        error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
+        order = np.log2(error_ratio)
+        print(f"\nEstimated Convergence Order: {order:.2f}")
+    
+    results3 = []
     print("Start Problem 3 (Inexact Uzawa)...")
     
     for N in Ns:
         iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_3(N)
-        results.append({
+        results3.append({
             'N': N,
             'Iterations': iters,
             'CPU Time': cpu_time,
@@ -60,7 +107,7 @@ def main():
         
         plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 3)
         
-    df = pd.DataFrame(results)
+    df = pd.DataFrame(results3)
     print("\nResults Summary:")
     print(df)
     
