@@ -18,8 +18,6 @@ def enforce_dirichlet_bc(u, v):
     v[:, -1] = 0.0
     return u, v
 
-
-
 def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     N = p.shape[0]
     

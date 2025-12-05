@@ -147,7 +147,7 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
 
-def solve_problem_3(N, tol=1e-8, max_iter=100):
+def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     """
     Solve Stokes using Inexact Uzawa:
         A u^{k+1} = f - B p^k      (approx solved by V-cycle for velocity)
@@ -198,8 +198,7 @@ def solve_problem_3(N, tol=1e-8, max_iter=100):
     # -------------------------
     # Uzawa parameters
     # -------------------------
-    alpha = 1.0   # Uzawa step size; usually 1 for Poisson-like divergence blocks
-
+   
     iters = max_iter
     for k in range(max_iter):
 
@@ -214,15 +213,12 @@ def solve_problem_3(N, tol=1e-8, max_iter=100):
         Bp_v[:, 1:N] = Bp_v_inner
         f_minus_bp = (f - Bp_u, g - Bp_v)
 
+        # Use DGS V cycle as pre-conditioning for CG methods. i.e., first use vcycle to smooth u and v, then use CG to solve u and v.
         u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,
                                 nu1=3, nu2=3, min_N=4)
 
-        # -------------------------------------------------
-        # (2) pressure update: p^{k+1} = p^k + alpha * div(u^{k+1})
-        # -------------------------------------------------
-        div_u = apply_divergence_uv(u, v, h)
-        p = p - alpha * div_u
-        p = p - np.mean(p) 
+        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha)
+        p -= np.mean(p)
 
 
         # -------------------------------------------------
