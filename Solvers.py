@@ -1,6 +1,6 @@
 import numpy as np
 import time
-from Operators import compute_residuals_stokes, apply_gradient_p
+from Operators import compute_residuals_stokes, apply_gradient_p, apply_divergence_uv
 from TrueSolution import get_exact_solution
 from vcycle import v_cycle_recursive, v_cycle_velocity
 from Uzawa import uzawa_step
@@ -220,11 +220,9 @@ def solve_problem_3(N, tol=1e-8, max_iter=100):
         # -------------------------------------------------
         # (2) pressure update: p^{k+1} = p^k + alpha * div(u^{k+1})
         # -------------------------------------------------
-        _, _, div_u = compute_residuals_stokes(u, v, np.zeros_like(p),
-                                               np.zeros_like(f), np.zeros_like(g),
-                                               h, bcs)
-        p = p + alpha * div_u
-        p = p - np.mean(p)   # normalize pressure
+        div_u = apply_divergence_uv(u, v, h)
+        p = p - alpha * div_u
+        p = p - np.mean(p) 
 
 
         # -------------------------------------------------
