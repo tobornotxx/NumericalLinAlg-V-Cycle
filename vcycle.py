@@ -21,13 +21,14 @@ def enforce_dirichlet_bc(u, v):
 def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     N = p.shape[0]
     
-    # Coarse Grid Solve
+    # 粗网格求解
     if N <= min_N:
         if g_div is not None:
+            # 中心化残差散度
             g_div -= np.mean(g_div)
-            # print(f"current centered g_div:{g_div}")
 
         for _ in range(100): 
+            # 对最粗的网格，用100步DGS求解
             u, v, p = dgs_step(u, v, p, f, g, h, bcs, g_div)
             p -= np.mean(p)
         u, v = enforce_dirichlet_bc(u, v)
@@ -42,31 +43,30 @@ def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     # 1. Pre-Smooth
     for _ in range(nu1):
         u, v, p = dgs_step(u, v, p, f, g, h, bcs, g_div)
-    u, v = enforce_dirichlet_bc(u, v) # Important!
+    u, v = enforce_dirichlet_bc(u, v) # 为了保证收敛，多施加几次强制边界条件函数。
     p -= np.mean(p)
 
-    # 2. Residuals
+    # 2. 残差计算
     r_u, r_v, r_div_computed = compute_residuals_stokes(u, v, p, f, g, h, bcs)
     
-    # print(f'r_div_comp[0,0]:{r_div_computed[0,0]:.2e}')
     if g_div is not None:
         r_div_real = r_div_computed + g_div
     else:
         r_div_real = r_div_computed
 
-    # 3. Restrict
+    # 3. 限制到粗网格
     f_c_inner, g_c_inner, g_div_c = restrict_residuals(r_u, r_v, r_div_real)
 
     g_div_c -= np.mean(g_div_c)
     
-    # Setup Coarse Problem
+    # 粗网格问题设定
     Nc = N // 2
     f_c = np.zeros((Nc + 1, Nc))
     f_c[1:-1, :] = f_c_inner
     g_c = np.zeros((Nc, Nc + 1))
     g_c[:, 1:-1] = g_c_inner
     
-    # Error equations have zero BCs
+    # 残差问题边界条件是0
     bcs_c = {'b': np.zeros(Nc - 1), 't': np.zeros(Nc - 1), 
              'l': np.zeros(Nc - 1), 'r': np.zeros(Nc - 1)}
     
@@ -74,20 +74,20 @@ def v_cycle_recursive(u, v, p, f, g, g_div, h, bcs, nu1, nu2, min_N):
     v_c = np.zeros((Nc, Nc + 1))
     p_c = np.zeros((Nc, Nc))
     
-    # 4. Recursion
+    # 4. 递归
     e_u, e_v, e_p = v_cycle_recursive(u_c, v_c, p_c, f_c, g_c, g_div_c, 
                                       2*h, bcs_c, nu1, nu2, min_N)
     
-    # 5. Prolongate & Correct
+    # 5. 提升校正
     corr_u, corr_v, corr_p = prolongate_error(e_u, e_v, e_p)
     u += corr_u
     v += corr_v
     p += corr_p
     
-    # Correction might be noisy at boundaries, clamp it immediately
+    # 防止边界的噪音问题
     u, v = enforce_dirichlet_bc(u, v)
     
-    # 6. Post-Smooth
+    # 6. 后光滑
     for _ in range(nu2):
         u, v, p = dgs_step(u, v, p, f, g, h, bcs, g_div)
         
@@ -109,8 +109,7 @@ def v_cycle_velocity(u, v, f_minus_bp, h, bcs,
     """
     V-cycle for the velocity-only subproblem A U = F - B P_k.
 
-    参数
-    ----
+    Parameters:
     u: ndarray (N+1, N)       — 当前速度 u 分量（网格边界包含）
     v: ndarray (N, N+1)       — 当前速度 v 分量
     f_minus_bp: tuple (f_u, f_v)
@@ -121,23 +120,17 @@ def v_cycle_velocity(u, v, f_minus_bp, h, bcs,
     nu1, nu2: int             — pre-/post- smooth 次数
     min_N: int               — 最粗网格阈值（与你的 v_cycle_recursive 保持一致）
     
-    返回
-    ----
+    Returns:
     u, v  — 更新后的速度场（近似解）
     """
 
     # shapes and sizes
     f_u, f_v = f_minus_bp
-    N = f_u.shape[0] - 1         # 注意：f_u.shape == (N+1, N) 这里 N 表示单元格个数
-    # consistency check (optional)
-    # f_v should be (N, N+1)
+    N = f_u.shape[0] - 1         # 注意：f_u.shape == (N+1, N)
+  
 
-    # assert f_v.shape[0] == N and f_v.shape[1] == N+1, "f_v shape mismatch"
-
-    # --- Coarse grid direct-ish solve (base case) ---
     if N <= min_N:
-        # 在最粗网格上，使用较多次的 DGS velocity-step 迭代作为近似解器
-        # 这里用 100 次与您原来 v_cycle_recursive 的 coarse solve 保持一致
+        # 在最粗网格上，100次DGS求解
         for _ in range(100):
             u, v = dgs_velocity_step(u, v, f_minus_bp, h, bcs)
         u, v = enforce_dirichlet_bc(u, v)
@@ -151,55 +144,51 @@ def v_cycle_velocity(u, v, f_minus_bp, h, bcs,
     u, v = enforce_dirichlet_bc(u, v)
 
     # -------------------------
-    # 2) Compute residual r = RHS - A*u
-    #    We use compute_residuals_stokes with pressure = 0
-    #    because compute_residuals_stokes returns r_u = f - (A u + B p).
-    #    Passing p=0 and f=f_minus_bp yields r_u = f_minus_bp - A u (期望的残差).
+    # 2) 计算残差r = RHS - A*u
+    #  用compute_residuals_stokes计算残差, p=0
+    #    因为compute_residual_stokes计算的是 r_u = f - (A u + B p).
+    #    传入 p=0 以及 f=f_minus_bp 就得到 r_u = f_minus_bp - A u (期望的残差).
     # -------------------------
-    p_zero = np.zeros((N, N))  # pressure not used here, shape as usual
+    p_zero = np.zeros((N, N))  # dummy pressure field
     r_u, r_v, r_div = compute_residuals_stokes(u, v, p_zero, f_u, f_v, h, bcs)
-    # r_div is ignored for velocity-only transfer, but restrict_residuals signature expects it.
-    # If restrict_residuals expects a "real" divergence, pass zeros; we pass r_div (should be consistent).
-    # In your original v_cycle_recursive you passed r_u, r_v, r_div_real into restrict_residuals.
+    # div的残差不使用，但是还是要传入限制函数。
 
     # -------------------------
-    # 3) Restrict residuals to coarse grid
-    #    restrict_residuals returns (f_c_inner, g_c_inner, g_div_c)
-    #    where f_c_inner has shape (Nc-1, Nc) (inner cells) as in your code
+    # 3) 限制残差到粗网格
+    #    restrict_residuals 返回 (f_c_inner, g_c_inner, g_div_c)
     # -------------------------
     f_c_inner, g_c_inner, g_div_c = restrict_residuals(r_u, r_v, r_div)
 
-    # prepare coarse arrays (same layout as in v_cycle_recursive)
+    # 准备粗网格序列，与第一问格式保持一致
     Nc = N // 2
     f_c = np.zeros((Nc + 1, Nc))
-    f_c[1:-1, :] = f_c_inner     # place inner restricted RHS
+    f_c[1:-1, :] = f_c_inner     # 中间填入限制值
     g_c = np.zeros((Nc, Nc + 1))
     g_c[:, 1:-1] = g_c_inner
 
-    # coarse-level boundary conditions: zero (error equations have zero BCs)
+    # 粗网格边界条件为0
     bcs_c = {'b': np.zeros(Nc - 1), 't': np.zeros(Nc - 1),
              'l': np.zeros(Nc - 1), 'r': np.zeros(Nc - 1)}
 
-    # initialize coarse corrections (zero initial guess)
+    # 初始化粗网格校正
     u_c = np.zeros((Nc + 1, Nc))
     v_c = np.zeros((Nc, Nc + 1))
 
     # -------------------------
-    # 4) Recurse: solve A_c e = r_c approximately
+    # 4) 递归渐进解 A_c e = r_c 
     # -------------------------
     e_u_c, e_v_c = v_cycle_velocity(u_c, v_c, (f_c, g_c), 2*h, bcs_c,
                                    nu1=nu1, nu2=nu2, min_N=min_N)
 
     # -------------------------
-    # 5) Prolongate correction and apply to fine grid
+    # 5) 提升回到细网格
     # -------------------------
-    # prolongate_error returns (corr_u, corr_v, corr_p)
     corr_u, corr_v, _ = prolongate_error(e_u_c, e_v_c, np.zeros((Nc, Nc)))
-    # Add corrections (shapes must match)
+    # 加上校正
     u += corr_u
     v += corr_v
 
-    # clamp boundaries, avoid introducing boundary noise
+    # 修正边界
     u, v = enforce_dirichlet_bc(u, v)
 
     # -------------------------

@@ -1,39 +1,42 @@
+# 实现第一问的DGS磨光，分两步，先更新速度（smooth_momentum），然后更新压力(apply_distributive_correction)
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from Operators import apply_divergence_uv, apply_laplacian_u, apply_laplacian_v
 
 def smooth_momentum(u, v, p, f, g, h, bcs):
-    # 保持原有逻辑
     N = p.shape[0]
     h2 = h * h
     
     # --- Update u ---
+    # 填充u的上下两行，填充值为0，保证网格尺寸兼容
     u_pad = np.pad(u, ((0,0), (1,1)), mode='constant')
     
-    dp_dx = (p[1:, :] - p[:-1, :]) * h
+    dp_dx = (p[1:, :] - p[:-1, :]) * h #这里单独计算是为了防止数值溢出
+
     rhs_u = f[1:-1, :] * h2
     
     nx, ny_pad = u_pad[1:-1, :].shape
     ix, iy = np.indices((nx, ny_pad))
     
+    # 红黑Gauss-Seidel迭代，交替更新，当更新红点时，黑点值fix；反之亦然。
     for parity in [0, 1]:
+        # 用边界条件值更新边界点（分别为bottom和top）
         if 'b' in bcs:
             u_pad[1:-1, 0] = u_pad[1:-1, 1] + h * bcs['b']
         if 't' in bcs:
             u_pad[1:-1, -1] = u_pad[1:-1, -2] + h * bcs['t']
 
+        # 计算红黑掩码
         mask = ((ix + 1) + (iy - 1)) % 2 == parity
+
+        # 锁定边界点，防止更新
         mask[:, 0] = False
         mask[:, -1] = False
-
-        # 2. === 新增: 锁定 Dirichlet 边界 (X方向, u=0) ===
-        # u 的 shape 是 (N+1, N)，对应索引 0 到 N
-        # 0 和 -1 (即 N) 是墙壁，不能动
-        # mask[0, :] = False
-        # mask[-1, :] = False
         
         u_center = u_pad[1:-1, 1:-1]
         
+        # 使用切片的方法计算避免循环，对于内点，4u = u_up + u_down + u_left + u_right - dp/dx * h + rhs * h^2
         u_up    = u_pad[1:-1, 2:]
         u_down  = u_pad[1:-1, 0:-2]
         u_left  = u_pad[0:-2, 1:-1]
@@ -47,7 +50,7 @@ def smooth_momentum(u, v, p, f, g, h, bcs):
         u_center[mask_center] = val_new[mask_center]
         u_pad[1:-1, 1:-1] = u_center
 
-    u[:] = u_pad[:, 1:-1]
+    u[:] = u_pad[:, 1:-1] # 去掉新加的边界
 
     # --- Update v ---
     v_pad = np.pad(v, ((1,1), (0,0)), mode='constant')
@@ -93,26 +96,28 @@ def smooth_momentum(u, v, p, f, g, h, bcs):
 
 def apply_distributive_correction(u, v, p, h, g_div=None):
     """
-    Safer version of distributive correction.
-    Avoids any negative indexing and handles boundaries explicitly.
+    压力分布式更新
+    防止了负索引导致的越界等情况
+    g_div: 散度残差
     """
     N = p.shape[0]
     ix, iy = np.indices((N, N))
 
-    # Two-color Gauss-Seidel
+    # 同理红黑 Gauss-Seidel
     for parity in [0, 1]:
-        # Compute cell-centered divergence
-        div = (u[1:, :] - u[:-1, :]) / h + (v[:, 1:] - v[:, :-1]) / h
+        # 计算散度
+        div = apply_divergence_uv(u, v, h)
         r = (g_div - div) if (g_div is not None) else -div
 
 
         mask_all = (ix + iy) % 2 == parity
 
         # ============================================================
-        # 1. Internal points (with all four neighbors)
+        # 1. 内点，四个邻居
         # ============================================================
         mask_int = np.zeros_like(mask_all, dtype=bool)
         mask_int[1:-1, 1:-1] = True
+        # 同样不允许修改边界点
         mask = mask_all & mask_int
 
         if np.any(mask):
@@ -120,11 +125,15 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
             vals = r[rows, cols]
             delta = vals * h / 4.0
 
+            # 内部方程，delta = div residual/4
+            # u左侧-delta，右侧+delta。v更新规则类似
+
             u[rows, cols]   -= delta
             u[rows+1, cols] += delta
             v[rows, cols]   -= delta
             v[rows, cols+1] += delta
 
+            # p中心点 + res, 四周 - res / 4
             p[rows, cols]   += vals
             p[rows-1, cols] -= vals/4
             p[rows+1, cols] -= vals/4
@@ -132,7 +141,7 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
             p[rows, cols+1] -= vals/4
 
         # ============================================================
-        # 2. Top boundary  j = N-1
+        # 2. 上边界  j = N-1
         # ============================================================
         mask_top = np.zeros_like(mask_all, dtype=bool)
         mask_top[1:-1, N-1] = True
@@ -151,10 +160,10 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
                 p[rr, cc] += val
                 p[rr-1, cc] -= val/3
                 p[rr+1, cc] -= val/3
-                p[rr, cc-1] -= val/3  # only left neighbor exists
+                p[rr, cc-1] -= val/3  # 没有上方邻居
 
         # ============================================================
-        # 3. Bottom boundary j = 0
+        # 3. 下边界 j = 0
         # ============================================================
         mask_bot = np.zeros_like(mask_all, dtype=bool)
         mask_bot[1:-1, 0] = True
@@ -176,7 +185,7 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
                 p[rr, cc+1] -= val/3
 
         # ============================================================
-        # 4. Left boundary i = 0
+        # 4. 左边界 i = 0
         # ============================================================
         mask_left = np.zeros_like(mask_all, dtype=bool)
         mask_left[0, 1:-1] = True
@@ -198,7 +207,7 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
                 p[rr, cc+1] -= val/3
 
         # ============================================================
-        # 5. Right boundary i = N-1
+        # 5. 右边界 i = N-1
         # ============================================================
         mask_right = np.zeros_like(mask_all, dtype=bool)
         mask_right[N-1, 1:-1] = True
@@ -220,8 +229,8 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
                 p[rr, cc+1] -= val/3
 
         # ============================================================
-        # 6. Four corners (all neighbors missing)
-        #    Use weight = h/2 and distribute pressure to 2 neighbors
+        # 6. 角落点更新
+        #    只有两个邻居点，权重为 h/2
         # ============================================================
 
         # (0,0)
@@ -266,12 +275,13 @@ def apply_distributive_correction(u, v, p, h, g_div=None):
 
 
 def dgs_step(u, v, p, f, g, h, bcs, g_div=None):
-    # 1. Momentum Smoothing (GS)
+    # 1. 速度迭代
     u, v = smooth_momentum(u, v, p, f, g, h, bcs)
 
-    # 2. Distributive Correction (Red-Black)
+    # 2. 压力更新
     u, v, p = apply_distributive_correction(u, v, p, h, g_div)
  
+    # 后处理，中心化p，处理边界问题
     p -= np.mean(p)
     u[0, :] = 0.0
     u[-1, :] = 0.0

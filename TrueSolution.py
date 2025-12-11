@@ -23,6 +23,7 @@ def create_grids(N):
     xv = (np.arange(1, N+1) - 0.5) * h
     yv = np.arange(0, N+1) * h
 
+    # 用ij方式编号可以保证x方向对应第一个维度，y方向对应第二个维度
     xp, yp = np.meshgrid(xp, yp, indexing='ij')
     xu, yu = np.meshgrid(xu, yu, indexing='ij')
     xv, yv = np.meshgrid(xv, yv, indexing='ij')

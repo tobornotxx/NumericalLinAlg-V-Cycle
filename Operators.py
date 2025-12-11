@@ -3,22 +3,24 @@ import numpy as np
 
 def apply_laplacian_u(u, h):
     '''
-    Apply Laplacian operator to u
+    Apply Laplacian operator to v
     Shape of u: (N+1, N)
     使用差分格式计算 Laplacian
     返回 -Laplacian(u)， shape (N-1, N)
     '''
-    # x的内部点：
+    # x的内部点，二阶差分格式：
     dxxu = (u[2:, :] - 2 * u[1:-1, :] + u[:-2, :]) / h**2
-    u_internal = u[1:-1, :] # x方向内部
+    u_internal = u[1:-1, :] # x方向内部，去掉边界
     dyyu_internal = (u_internal[:, 2:] - 2 * u_internal[:, 1:-1] + u_internal[:, :-2]) / h**2
 
-    # 底部，j=0,离散形式退化为 (u_{i,1} - u_{i,0})/h^2
+    # 边界处理，底部，j=0,离散形式退化为 (u_{i,1} - u_{i,0})/h^2，一阶近似
+    # 边界条件满足的方程是V-Cycle Slides 35-36页给出的
     dyyu_bottom = (u_internal[:, 1] - u_internal[:, 0]) / h**2
 
     # 顶部，j=N-1,离散形式退化为 -(u_{i,N-1} - u_{i,N-2})/h^2
     dyyu_top = (u_internal[:, -2] - u_internal[:, -1]) / h**2
 
+    # 分别用内部和边界值填充组装
     dyyu = np.zeros_like(dxxu)
     dyyu[:, 1:-1] = dyyu_internal
     dyyu[:, 0] = dyyu_bottom
@@ -62,8 +64,8 @@ def apply_gradient_p(p,h):
     计算压力p的梯度
     输入：p (N, N)
     输出：
-        gp_x: (N-1, N)对应u位置
-        gp_y: (N, N-1)对应v位置
+        gp_x: (N-1, N)对应u位置的梯度
+        gp_y: (N, N-1)对应v位置的梯度   
     '''
     # dp/dx: (p[i,j] - p[i-1,j])/h
     # 在 u_{i,j} 的位置，右边是 p[i,j] (对应 numpy index i)，左边是 p[i-1,j] (对应 numpy index i-1)
@@ -129,7 +131,7 @@ def compute_residuals_stokes(u, v, p, f, g, h, bcs):
     rhs_v = g[:, 1:-1].copy()
 
     # 加入边界条件
-    # Slides V-Cycle P35 Equation 2, 3; P36 Equation 2, 3
+    # Reference: Slides V-Cycle P35 Equation 2, 3; P36 Equation 2, 3
 
     rhs_u[:, 0] += bcs['b'] / h
     rhs_u[:, -1] += bcs['t'] / h
@@ -139,8 +141,6 @@ def compute_residuals_stokes(u, v, p, f, g, h, bcs):
     # 计算残差
     # r_u = rhs_u - (Lu + gp_x)
     r_u = rhs_u - (Lu + gp_x)
-
-
 
     # r_v = rhs_v - (Lv + gp_y)
     r_v = rhs_v - (Lv + gp_y)

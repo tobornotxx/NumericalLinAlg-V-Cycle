@@ -1,10 +1,10 @@
 import numpy as np
+# 参考往年大作业的作业文档中的限制-提升算子图例。
 
 def restrict_residuals(r_u, r_v, r_div):
     '''
     限制算子 (Fine -> Coarse)
-    根据图片要求：
-    U, V: Nearest 2 (/4) + Next Nearest 4 (/8). (6-point stencil)
+    U, V: Nearest 2 (/4) + Next Nearest 4 (/8). 
     P (Div): Nearest 4 (/4). (Average)
     '''
     N = r_div.shape[0]
@@ -56,7 +56,6 @@ def restrict_residuals(r_u, r_v, r_div):
 def prolongate_error(e_u_coarse, e_v_coarse, e_p_coarse):
     '''
     提升算子 (Coarse -> Fine)
-    根据图片要求：
     U: 粗网格线(Nearest), 细网格线(Average of 2) -> 线性插值
     V: 同上
     P: Nearest -> 常数插值

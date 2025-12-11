@@ -12,7 +12,7 @@ def get_rhs_with_bcs(f, g, bcs, h):
     rhs_u = f[1:-1, :].copy()
     rhs_v = g[:, 1:-1].copy()
 
-    # 叠加 Neumann 边界条件贡献 (与 Operator 中的 stencil 对应)
+    # 加入边界条件到右边项
     rhs_u[:, 0] += bcs['b'] / h
     rhs_u[:, -1] += bcs['t'] / h
     rhs_v[0, :] += bcs['l'] / h
@@ -35,7 +35,7 @@ def apply_laplacian_u_direction(p_dir, h):
 def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
     '''
     共轭梯度法求解 -Laplacian(u) = rhs
-    u: Initial guess (N+1, N). Updates interior in-place.
+    u: 初值 (N+1, N). in-place更新内部.
     rhs: (N-1, N)
     '''
     from Operators import apply_laplacian_u
@@ -50,7 +50,8 @@ def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
     for i in range(max_iter):
         if rsold < tol**2:
             break
-            
+        
+        # CG法计算逻辑
         # 计算 Ap。注意 p 只是方向，代表 update 量，因此其边界条件是 0
         Ap = apply_laplacian_u_direction(p, h)
         
@@ -138,8 +139,8 @@ def uzawa_step(u, v, p, f, g, h, bcs, alpha):
     # 3. 更新压力
     # p_{k+1} = p_k - alpha * div(u_{k+1})
     # 注意：div 函数返回的是 div(u)，对应方程中的 B^T U = -div U。
-    # Uzawa update rule: p += alpha * (defect). 
-    # Stokes system: div u = 0. Defect = 0 - div u = -div u.
+    # Uzawa 更新: p += alpha * (defect). 
+    # Stokes: div u = 0. Defect = 0 - div u = -div u.
     div_val = apply_divergence_uv(u, v, h)
     p = p - alpha * div_val
     

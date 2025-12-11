@@ -3,31 +3,36 @@ import numpy as np
 def smooth_velocity(u, v, f_minus_bp, h, bcs):
     """
     DGS smoother for the velocity subproblem AU = F - B*P_k
+    DGS平滑，求解速度子问题 AU = F - B*P_k
     Only updates u, v; pressure is fixed.
+    只更新u,v; fix p
     
     Parameters:
         u: (N+1, N) velocity x-component
         v: (N, N+1) velocity y-component
-        f_minus_bp: tuple (f_u, f_v) right-hand side
-        h: grid spacing
-        bcs: boundary conditions dictionary
+        f_minus_bp: 方程右侧项
+        h: 网格长度
+        bcs: dict, 记录边界条件值
     """
-    f_u, f_v = f_minus_bp
+    f_u, f_v = f_minus_bp # 解耦
     N = f_u.shape[0]
     h2 = h*h
 
     # --- Update u ---
+    # 同理dgs对u边界的填充
     u_pad = np.pad(u, ((0,0),(1,1)), mode='constant')
-    dp_dx_dummy = np.zeros_like(u)  # Pressure term absorbed in RHS
     rhs_u = f_u[1:-1, :] * h2
 
     nx, ny_pad = u_pad[1:-1,:].shape
     ix, iy = np.indices((nx, ny_pad))
 
     for parity in [0,1]:
+        # 基于边界条件给网格边界点赋值，要满足梯度条件
         if 'b' in bcs: u_pad[1:-1,0] = u_pad[1:-1,1] + h*bcs['b']
         if 't' in bcs: u_pad[1:-1,-1] = u_pad[1:-1,-2] + h*bcs['t']
 
+        # 与第一问同样的红黑掩码更新Gauss-Seidel
+        # 逻辑完全相同
         mask = ((ix+1) + (iy-1)) % 2 == parity
         mask[:,0] = False
         mask[:,-1] = False
@@ -50,7 +55,6 @@ def smooth_velocity(u, v, f_minus_bp, h, bcs):
 
     # --- Update v ---
     v_pad = np.pad(v, ((1,1),(0,0)), mode='constant')
-    dp_dy_dummy = np.zeros_like(v)
     rhs_v = f_v[:, 1:-1] * h2
 
     nx_pad, ny = v_pad[:,1:-1].shape
@@ -85,20 +89,19 @@ def smooth_velocity(u, v, f_minus_bp, h, bcs):
 
 def apply_distributive_correction_velocity(u, v, h):
     """
-    Distributive correction for velocity subproblem only.
-    Does NOT update pressure.
+    分布式更新速度场，不更新压力。
     """
     N = u.shape[0]-1
     ix, iy = np.indices((N,N))
 
     for parity in [0,1]:
-        # Compute divergence
+        # 计算散度
         div = (u[1:, :] - u[:-1,:])/h + (v[:,1:] - v[:,:-1])/h
         r = -div
 
         mask_all = (ix + iy) % 2 == parity
 
-        # Internal points
+        # 内点
         mask_int = np.zeros_like(mask_all, dtype=bool)
         mask_int[1:-1,1:-1] = True
         mask = mask_all & mask_int
@@ -117,7 +120,7 @@ def apply_distributive_correction_velocity(u, v, h):
 
 def dgs_velocity_step(u, v, f_minus_bp, h, bcs):
     """
-    One DGS iteration for AU = F - B P_k
+    一次 AU = F - B P_k 迭代
     """
     u, v = smooth_velocity(u, v, f_minus_bp, h, bcs)
     u, v = apply_distributive_correction_velocity(u, v, h)

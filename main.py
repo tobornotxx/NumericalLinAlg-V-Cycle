@@ -4,40 +4,46 @@ import matplotlib.pyplot as plt
 from Solvers import solve_problem_1, solve_problem_2, solve_problem_3
 
 def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
+    '''
+    画图的辅助函数，做一个数值解和真解的对比图并存储。
+    '''
     h = 1.0 / N
-    Xp, Yp = np.meshgrid(np.linspace(h/2, 1-h/2, N), np.linspace(h/2, 1-h/2, N), indexing='ij')
     
     fig, axs = plt.subplots(2, 3, figsize=(15, 10))
     
-    # Plot U (interpolated to center for viz)
+    # 绘制 U（插值到中心）
     u_center = 0.5 * (u[:-1, :] + u[1:, :])
     im0 = axs[0,0].imshow(u_center.T, origin='lower', extent=[0,1,0,1])
     axs[0,0].set_title('Computed U')
     plt.colorbar(im0, ax=axs[0,0])
     
-    im1 = axs[1,0].imshow(u_ex.T, origin='lower', extent=[0,1,0,1]) # u_ex shape is (N+1, N), plot directly? 
-    # u_ex is on faces, let's just plot u_center_ex
+    # u_ex是直接对中心计算的，直接绘图即可
     u_ex_c = 0.5 * (u_ex[:-1, :] + u_ex[1:, :])
-    axs[1,0].imshow(u_ex_c.T, origin='lower', extent=[0,1,0,1])
+    im1 = axs[1,0].imshow(u_ex_c.T, origin='lower', extent=[0,1,0,1])
     axs[1,0].set_title('Exact U')
+    plt.colorbar(im1, ax=axs[1,0])
 
-    # Plot V
+    # 绘制 V（插值到中心）
     v_center = 0.5 * (v[:, :-1] + v[:, 1:])
     im2 = axs[0,1].imshow(v_center.T, origin='lower', extent=[0,1,0,1])
     axs[0,1].set_title('Computed V')
     plt.colorbar(im2, ax=axs[0,1])
     
+    # 绘制v_ex真解
     v_ex_c = 0.5 * (v_ex[:, :-1] + v_ex[:, 1:])
-    axs[1,1].imshow(v_ex_c.T, origin='lower', extent=[0,1,0,1])
+    im3 = axs[1,1].imshow(v_ex_c.T, origin='lower', extent=[0,1,0,1])
     axs[1,1].set_title('Exact V')
+    plt.colorbar(im3, ax=axs[1,1])
 
-    # Plot P
+    # 绘制 P
     im4 = axs[0,2].imshow(p.T, origin='lower', extent=[0,1,0,1])
     axs[0,2].set_title('Computed P')
     plt.colorbar(im4, ax=axs[0,2])
     
+    # 绘制p_ex真解
     im5 = axs[1,2].imshow(p_ex.T, origin='lower', extent=[0,1,0,1])
     axs[1,2].set_title('Exact P')
+    plt.colorbar(im5, ax=axs[1,2])
 
     plt.tight_layout()
     plt.savefig(f'stokes_solution_N={N}_method={method_idx}.png')

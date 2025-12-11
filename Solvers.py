@@ -14,7 +14,6 @@ def solve_problem_1(N, tol=1e-8, max_iter=10000):
     
     u_ex, v_ex, p_ex, f, g = get_exact_solution(N)
 
-        # === NEW: Initialize u, v with discrete-exact BC ===
     u[0, :]  = u_ex[0, :]      # left wall
     u[-1, :] = u_ex[-1, :]     # right wall
     v[:, 0]  = v_ex[:, 0]      # bottom wall
@@ -34,7 +33,7 @@ def solve_problem_1(N, tol=1e-8, max_iter=10000):
     bcs = {'b': bc_b, 't': bc_t, 'l': bc_l, 'r': bc_r}
     
 
-    # Init Residual
+    # 初始残差
     r_u, r_v, r_div = compute_residuals_stokes(u, v, p, f, g, h, bcs)
     norm_r0 = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
     
@@ -52,7 +51,6 @@ def solve_problem_1(N, tol=1e-8, max_iter=10000):
         norm_r = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
         
         ratio = norm_r / norm_r0
-        # print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
         
         if np.isnan(norm_r) or np.isinf(norm_r):
             print("Diverged!")
@@ -127,7 +125,6 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
             
         if ratio <= tol:
             iters = k + 1
-            # print(f"Converged at iter {k+1}, Ratio = {ratio:.4e}")
             break
             
         if np.isnan(norm_r) or norm_r > 1e10:
@@ -149,10 +146,9 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
 
 def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     """
-    Solve Stokes using Inexact Uzawa:
-        A u^{k+1} = f - B p^k      (approx solved by V-cycle for velocity)
+    Inexact Uzawa求解Stokes方程:
+        A u^{k+1} = f - B p^k      (Vcycle作为Preconditioner,然后使用CG求解)
         p^{k+1}   = p^k + alpha * (div u^{k+1})
-    Output format identical to solve_problem_1.
     """
 
     h = 1.0 / N
@@ -161,7 +157,7 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     p = np.zeros((N, N))
 
     # -------------------------
-    # 1. Exact solution + forcing
+    # 1. 真解与边界条件
     # -------------------------
     u_ex, v_ex, p_ex, f, g = get_exact_solution(N)
 
@@ -172,7 +168,7 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     v[:, -1] = v_ex[:, -1]
 
     # -------------------------
-    # 2. Build velocity BCs
+    # 2. 构造速度边值
     # -------------------------
     x_u_internal = (np.arange(1, N) * h)
     bc_b = -2 * np.pi * (1 - np.cos(2 * np.pi * x_u_internal))
@@ -186,7 +182,7 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
 
     # -------------------------
-    # 3. Initial residual
+    # 3. 初始残差
     # -------------------------
     r_u, r_v, r_div = compute_residuals_stokes(u, v, p, f, g, h, bcs)
     norm_r0 = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
@@ -196,16 +192,16 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
 
     # -------------------------
-    # Uzawa parameters
+    # Uzawa参数
     # -------------------------
    
     iters = max_iter
     for k in range(max_iter):
 
         # -------------------------------------------------
-        # (1) approx solve A u = f - B p^k using V-cycle
+        # (1) 解A u = f - B p^k V-cycle预优，再CG精确解
         # -------------------------------------------------
-        # compute RHS = (f, g) - B p^k
+        # RHS = (f, g) - B p^k
         Bp_u = np.zeros((N+1, N))
         Bp_v = np.zeros((N, N+1))
         Bp_u_inner, Bp_v_inner = apply_gradient_p(p, h)
@@ -222,14 +218,13 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
 
         # -------------------------------------------------
-        # (3) compute full residual
+        # (3) 残差计算
         # -------------------------------------------------
         r_u, r_v, r_div = compute_residuals_stokes(u, v, p, f, g, h, bcs)
         norm_r = np.sqrt(np.sum(r_u**2) + np.sum(r_v**2) + np.sum(r_div**2))
 
         ratio = norm_r / norm_r0
 
-        # print(f"Iter {k+1}: Norm = {norm_r:.4e}, Ratio = {ratio:.4e}")
 
         if np.isnan(norm_r) or np.isinf(norm_r):
             print("Diverged!")
@@ -241,7 +236,7 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
 
     # -------------------------
-    # 4. Timing & final errors
+    # 4. 结果统计
     # -------------------------
     cpu_time = time.time() - start_time
 
