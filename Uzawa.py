@@ -49,9 +49,9 @@ def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
     iter = max_iter
     
     for i in range(max_iter):
-        # print(f'Current rsold:{rsold}')
-        if rsold < tol**2:
+        if rsold * h**2 < tol: # note to normalize residual sqaured, otherwise it will be computation-expensive and ineffective.
             iter = i
+            print(f'iteration stopped at {i}')
             break
         
         # CG法计算逻辑
@@ -97,8 +97,9 @@ def cg_solve_v(v, rhs, h, max_iter=200, tol=1e-10):
     iter = max_iter
     
     for i in range(max_iter):
-        if rsold < tol**2:
+        if rsold * h**2 < tol:
             iter = i
+            print(f'iteration stopped at {i}')
             break
             
         Ap = apply_laplacian_v_direction(p, h)
