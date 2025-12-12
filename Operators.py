@@ -29,8 +29,6 @@ def apply_laplacian_u(u, h):
     # 注意：这里返回的是 -Laplacian(u)
     return -(dxxu + dyyu)
 
-
-
 def apply_laplacian_v(v,h):
     '''
     Apply Laplacian operator to v

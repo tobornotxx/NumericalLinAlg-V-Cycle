@@ -39,7 +39,6 @@
    4. `def uzawa_step(u, v, p, f, g, h, bcs, alpha)`Uzawa法的运行函数逻辑。
 8. InexactUzawa.py
    1. `def smooth_velocity(u, v, f_minus_bp, h, bcs)` Inexact Uzawa中预优的V-Cycle求解第一步，Gauss-Seidel更新速度
-   2. `def apply_distributive_correction_velocity(u, v, h)`第二步，分布式更新速度
    3. `def dgs_velocity_step(u, v, f_minus_bp, h, bcs)`一次子问题DGS磨光迭代。
 9. Solver.py:
    1. `def solve_problem_1(N, tol=1e-8, max_iter=10000)`第一问的循环启动与终止，残差计算等

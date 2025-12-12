@@ -46,9 +46,12 @@ def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
     
     p = r.copy()
     rsold = np.sum(r * r)
+    iter = max_iter
     
     for i in range(max_iter):
+        # print(f'Current rsold:{rsold}')
         if rsold < tol**2:
+            iter = i
             break
         
         # CG法计算逻辑
@@ -66,7 +69,8 @@ def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
         p = r + beta * p
         rsold = rsnew
         
-    return u
+    # print(f'CG for u converged after {max_iter} iters')
+    return u, iter
 
 def apply_laplacian_v_direction(p_dir, h):
     '''
@@ -90,9 +94,11 @@ def cg_solve_v(v, rhs, h, max_iter=200, tol=1e-10):
     
     p = r.copy()
     rsold = np.sum(r * r)
+    iter = max_iter
     
     for i in range(max_iter):
         if rsold < tol**2:
+            iter = i
             break
             
         Ap = apply_laplacian_v_direction(p, h)
@@ -106,10 +112,11 @@ def cg_solve_v(v, rhs, h, max_iter=200, tol=1e-10):
         beta = rsnew / rsold
         p = r + beta * p
         rsold = rsnew
-        
-    return v
+    
+    # print(f'CG for v converged after {max_iter} iters')
+    return v, iter
 
-def uzawa_step(u, v, p, f, g, h, bcs, alpha):
+def uzawa_step(u, v, p, f, g, h, bcs, alpha: float = 1.0, max_cg_iter: int = 100, cg_tol: float = 1e-10):
     '''
     Uzawa Iteration Step
     1. Solve A u_{k+1} = f - B p_k
@@ -133,8 +140,10 @@ def uzawa_step(u, v, p, f, g, h, bcs, alpha):
     
     # 2. 求解速度子问题 (使用 CG)
     # 这里 CG 的容差需要足够小，以保证外层 Uzawa 收敛
-    u = cg_solve_u(u, rhs_u_total, h, max_iter=100, tol=1e-10)
-    v = cg_solve_v(v, rhs_v_total, h, max_iter=100, tol=1e-10)
+    u, u_iter = cg_solve_u(u, rhs_u_total, h, max_iter=max_cg_iter, tol=cg_tol)
+    v, v_iter = cg_solve_v(v, rhs_v_total, h, max_iter=max_cg_iter, tol=cg_tol)
+
+    # print(f"CG for u used {u_iter} iterations, for v used {v_iter} iterations")
     
     # 3. 更新压力
     # p_{k+1} = p_k - alpha * div(u_{k+1})

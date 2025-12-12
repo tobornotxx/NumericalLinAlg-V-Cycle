@@ -111,7 +111,16 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     
     for k in range(max_iter):
         # Uzawa 迭代步
-        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha)
+
+        Bp_u = np.zeros((N+1, N))
+        Bp_v = np.zeros((N, N+1))
+        Bp_u_inner, Bp_v_inner = apply_gradient_p(p, h)
+        Bp_u[1:N, :] = Bp_u_inner
+        Bp_v[:, 1:N] = Bp_v_inner
+        f_minus_bp = (f - Bp_u, g - Bp_v)
+
+        u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,nu1=3, nu2=3, min_N=4)
+        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=100, cg_tol = 1e-5)
         
         # 强制压力零均值
         p -= np.mean(p)
@@ -213,7 +222,7 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
         u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,
                                 nu1=3, nu2=3, min_N=4)
 
-        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha)
+        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=5, cg_tol=1e-2)
         p -= np.mean(p)
 
 

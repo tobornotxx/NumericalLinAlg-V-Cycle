@@ -50,7 +50,7 @@ def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
     plt.close()
 
 def main():
-    Ns = [64, 128, 256] 
+    Ns = [64, 128, 256, 512, 1024, 2048] 
     results_1 = []
 
     print("Start Problem 1 (V-Cycle with DGS smoother)...")

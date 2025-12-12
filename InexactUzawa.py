@@ -87,43 +87,11 @@ def smooth_velocity(u, v, f_minus_bp, h, bcs):
     return u, v
 
 
-def apply_distributive_correction_velocity(u, v, h):
-    """
-    分布式更新速度场，不更新压力。
-    """
-    N = u.shape[0]-1
-    ix, iy = np.indices((N,N))
-
-    for parity in [0,1]:
-        # 计算散度
-        div = (u[1:, :] - u[:-1,:])/h + (v[:,1:] - v[:,:-1])/h
-        r = -div
-
-        mask_all = (ix + iy) % 2 == parity
-
-        # 内点
-        mask_int = np.zeros_like(mask_all, dtype=bool)
-        mask_int[1:-1,1:-1] = True
-        mask = mask_all & mask_int
-
-        if np.any(mask):
-            rows, cols = np.where(mask)
-            vals = r[rows,cols]
-            delta = vals*h/4.0
-            u[rows,cols]   -= delta
-            u[rows+1,cols] += delta
-            v[rows,cols]   -= delta
-            v[rows,cols+1] += delta
-
-    return u, v
-
-
 def dgs_velocity_step(u, v, f_minus_bp, h, bcs):
     """
     一次 AU = F - B P_k 迭代
     """
     u, v = smooth_velocity(u, v, f_minus_bp, h, bcs)
-    u, v = apply_distributive_correction_velocity(u, v, h)
 
     # Enforce Dirichlet BCs
     u[0, :] = 0.0
