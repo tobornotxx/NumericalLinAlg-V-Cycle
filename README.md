@@ -11,6 +11,8 @@
 1. main.py: 
    1. `def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int)`的画图辅助函数，做真解和数值解的可视化对比
    2. `def main()`的主函数，组织计算流程。
+   3. `def estimate_convergence_order(df: pd.DataFrame, refinement_ratio: float = 2.0)`的估计收敛阶数的辅助函数，第二个参数表示的是h每次变化的倍数。在本问题中永远为2.
+   4. `def main_param_grid_search()`的第二部分主函数，控制超参数的网格搜索过程。
 2. TrueSolution.py:
    1. `def create_grids(N)`返回形状分别为N, N; N+1, N; N, N+1的p, u, v函数的网格坐标x和y
    2. `def get_exact_solution(N)`返回在对应网格坐标上的u, v, p, f, g的精确数值
@@ -39,7 +41,7 @@
    4. `def uzawa_step(u, v, p, f, g, h, bcs, alpha)`Uzawa法的运行函数逻辑。
 8. InexactUzawa.py
    1. `def smooth_velocity(u, v, f_minus_bp, h, bcs)` Inexact Uzawa中预优的V-Cycle求解第一步，Gauss-Seidel更新速度
-   3. `def dgs_velocity_step(u, v, f_minus_bp, h, bcs)`一次子问题DGS磨光迭代。
+   2. `def dgs_velocity_step(u, v, f_minus_bp, h, bcs)`一次子问题DGS磨光迭代。
 9. Solver.py:
    1. `def solve_problem_1(N, tol=1e-8, max_iter=10000)`第一问的循环启动与终止，残差计算等
    2. `def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000)`第二问的循环启动终止，残差计算等

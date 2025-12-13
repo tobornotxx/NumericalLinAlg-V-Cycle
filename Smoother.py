@@ -93,7 +93,6 @@ def smooth_momentum(u, v, p, f, g, h, bcs):
     return u, v
 
 
-
 def apply_distributive_correction(u, v, p, h, g_div=None):
     """
     压力分布式更新
