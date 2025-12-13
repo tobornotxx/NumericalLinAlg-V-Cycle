@@ -6,7 +6,7 @@ from vcycle import v_cycle_recursive, v_cycle_velocity
 from Uzawa import uzawa_step
 
 
-def solve_problem_1(N, tol=1e-8, max_iter=10000):
+def solve_problem_1(N: int, tol:float = 1e-8, max_iter:int = 10000, nu1: int = 3, nu2: int = 3, min_N: int = 4):
     h = 1.0 / N
     u = np.zeros((N + 1, N))
     v = np.zeros((N, N + 1))
@@ -43,7 +43,7 @@ def solve_problem_1(N, tol=1e-8, max_iter=10000):
 
     iters = max_iter
     for k in range(max_iter):
-        u, v, p = v_cycle_recursive(u, v, p, f, g, None, h, bcs, 3, 3, 4)
+        u, v, p = v_cycle_recursive(u, v, p, f, g, None, h, bcs, nu1=nu1, nu2=nu2, min_N=min_N)
         
         p = p - np.mean(p)
         
@@ -169,7 +169,7 @@ def solve_problem_2(N: int, alpha: float = 1.0, tol: float = 1e-8, max_iter: int
     
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
 
-def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
+def solve_problem_3(N: int, tol:float = 1e-8, max_iter: int = 100, alpha:float = 1.0, nu1: int = 3, nu2: int = 3, min_N: int = 4, cg_tol: float = 1e-2):
     """
     Inexact Uzawa求解Stokes方程:
         A u^{k+1} = f - B p^k      (Vcycle作为Preconditioner,然后使用CG求解)
@@ -232,9 +232,9 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
         # Use DGS V cycle as pre-conditioning for CG methods. i.e., first use vcycle to smooth u and v, then use CG to solve u and v.
         u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,
-                                nu1=3, nu2=3, min_N=4)
+                                nu1=nu1, nu2=nu2, min_N=min_N)
 
-        u, v, p, cg_iter = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=10, cg_tol=1e-2)
+        u, v, p, cg_iter = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=10, cg_tol=cg_tol)
         total_cg_iter += cg_iter
         p -= np.mean(p)
 

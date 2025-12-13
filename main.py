@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from Solvers import solve_problem_1, solve_problem_2, solve_problem_3
+import itertools
 
 def estimate_convergence_order(df: pd.DataFrame, refinement_ratio: float = 2.0):
     """
@@ -151,5 +152,102 @@ def main():
         order = estimate_convergence_order(df, 2.0)
         print(f"\nEstimated Convergence Order: {order:.2f}")
 
+def main_param_grid_search():
+    """
+    对 solve_problem_1 和 solve_problem_3 的超参数执行网格搜索，
+    以找到最优的参数组合。
+    """
+    # 为网格搜索选择一个固定的、有代表性的 N
+    N_test = 1024
+    print(f"\n{'='*20} Starting Hyperparameter Grid Search (N={N_test}) {'='*20}\n")
+
+    # --- Part 1: Grid Search for solve_problem_1 ---
+    print("--- Grid Search for Problem 1 (V-Cycle) ---")
+    param_grid_1 = {
+        'nu': [2, 3, 4, 5],       # nu1 = nu2
+        'min_N': [2, 4, 8]
+    }
+    
+    search_results_1 = []
+    
+    # 生成参数组合
+    keys_1, values_1 = zip(*param_grid_1.items())
+    param_combinations_1 = [dict(zip(keys_1, v)) for v in itertools.product(*values_1)]
+    
+    for params in param_combinations_1:
+        nu = params['nu']
+        min_N = params['min_N']
+        print(f"Testing Problem 1 with nu1=nu2={nu}, min_N={min_N}...")
+        
+        iters, cpu_time, err, _, _, _, _, _, _ = solve_problem_1(N_test, nu1=nu, nu2=nu, min_N=min_N)
+        
+        search_results_1.append({
+            'nu': nu,
+            'min_N': min_N,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
+
+    df_search_1 = pd.DataFrame(search_results_1)
+    print("\nGrid Search Results for Problem 1:")
+    print(df_search_1)
+    
+    # 找到最优参数（首先按迭代次数排序，然后按CPU时间排序）
+    best_params_1 = df_search_1.sort_values(by=['Iterations', 'CPU Time']).iloc[0]
+    print("\nBest Parameters for Problem 1:")
+    print(best_params_1)
+    print("-" * 50)
+
+    # --- Part 2: Grid Search for solve_problem_3 ---
+    print("\n--- Grid Search for Problem 3 (Inexact Uzawa) ---")
+    param_grid_3 = {
+        'alpha': [0.5, 1.0, 1.5],
+        'nu': [2, 3, 4, 5],      # nu1 = nu2
+        'min_N': [2, 4, 8],
+        'cg_tol': [1e-2, 1e-3, 1e-4]
+    }
+    
+    search_results_3 = []
+
+    # 生成参数组合
+    keys_3, values_3 = zip(*param_grid_3.items())
+    param_combinations_3 = [dict(zip(keys_3, v)) for v in itertools.product(*values_3)]
+
+    for params in param_combinations_3:
+        alpha = params['alpha']
+        nu = params['nu']
+        min_N = params['min_N']
+        cg_tol = params['cg_tol']
+        print(f"Testing Problem 3 with alpha={alpha}, nu1=nu2={nu}, min_N={min_N}, cg_tol={cg_tol:.1e}...")
+        
+        iters, cpu_time, err, _, _, _, _, _, _ = solve_problem_3(
+            N_test, alpha=alpha, nu1=nu, nu2=nu, min_N=min_N, cg_tol=cg_tol
+        )
+        
+        search_results_3.append({
+            'alpha': alpha,
+            'nu': nu,
+            'min_N': min_N,
+            'cg_tol': cg_tol,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
+
+    df_search_3 = pd.DataFrame(search_results_3)
+    # 设置显示选项以避免科学记数法截断
+    pd.set_option('display.float_format', '{:.2e}'.format)
+    print("\nGrid Search Results for Problem 3:")
+    print(df_search_3.to_string()) # 使用 to_string() 确保所有行都被打印
+    
+    # 找到最优参数
+    best_params_3 = df_search_3.sort_values(by=['Iterations', 'CPU Time']).iloc[0]
+    print("\nBest Parameters for Problem 3:")
+    print(best_params_3)
+    print("-" * 50)
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    main_param_grid_search()
