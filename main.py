@@ -51,53 +51,53 @@ def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
 
 def main():
     Ns = [64, 128, 256, 512, 1024, 2048] 
-    # results_1 = []
+    results_1 = []
 
-    # print("Start Problem 1 (V-Cycle with DGS smoother)...")
+    print("Start Problem 1 (V-Cycle with DGS smoother)...")
     
-    # for N in Ns:
-    #     iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_1(N)
-    #     results_1.append({
-    #         'N': N,
-    #         'Iterations': iters,
-    #         'CPU Time': cpu_time,
-    #         'Error L2': err
-    #     })
+    for N in Ns:
+        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_1(N)
+        results_1.append({
+            'N': N,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
         
-    #     plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 1)
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 1)
         
-    # df = pd.DataFrame(results_1)
-    # print("\nResults Summary:")
-    # print(df)
+    df = pd.DataFrame(results_1)
+    print("\nResults Summary:")
+    print(df)
     
-    # if len(df) >= 2:
-    #     error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
-    #     order = np.log2(error_ratio)
-    #     print(f"\nEstimated Convergence Order: {order:.2f}")
+    if len(df) >= 2:
+        error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
+        order = np.log2(error_ratio)
+        print(f"\nEstimated Convergence Order: {order:.2f}")
 
-    # results2 = []
+    results2 = []
 
-    # print("Start Problem 2 (Uzawa Iteration Method)...")
+    print("Start Problem 2 (Uzawa Iteration Method)...")
     
-    # for N in Ns:
-    #     iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_2(N)
-    #     results2.append({
-    #         'N': N,
-    #         'Iterations': iters,
-    #         'CPU Time': cpu_time,
-    #         'Error L2': err
-    #     })
+    for N in Ns:
+        iters, cpu_time, err, u, v, p, u_ex, v_ex, p_ex = solve_problem_2(N)
+        results2.append({
+            'N': N,
+            'Iterations': iters,
+            'CPU Time': cpu_time,
+            'Error L2': err
+        })
         
-    #     plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 2)
+        plot_solution(N, u, v, p, u_ex, v_ex, p_ex, 2)
         
-    # df = pd.DataFrame(results2)
-    # print("\nResults Summary:")
-    # print(df)
+    df = pd.DataFrame(results2)
+    print("\nResults Summary:")
+    print(df)
     
-    # if len(df) >= 2:
-    #     error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
-    #     order = np.log2(error_ratio)
-    #     print(f"\nEstimated Convergence Order: {order:.2f}")
+    if len(df) >= 2:
+        error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
+        order = np.log2(error_ratio)
+        print(f"\nEstimated Convergence Order: {order:.2f}")
     
     results3 = []
     print("Start Problem 3 (Inexact Uzawa)...")

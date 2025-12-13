@@ -69,7 +69,7 @@ def solve_problem_1(N, tol=1e-8, max_iter=10000):
     print(f"Done N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}")
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
 
-def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
+def solve_problem_2(N: int, alpha: float = 1.0, tol: float = 1e-8, max_iter: int = 10000, max_vc_iter: int = 100):
     '''
     使用 Uzawa Iteration Method 求解
     '''
@@ -108,6 +108,7 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     
     start_time = time.time()
     iters = max_iter
+    vc_total_iter = 0
     
     for k in range(max_iter):
         # Uzawa 迭代步
@@ -119,9 +120,23 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
         Bp_v[:, 1:N] = Bp_v_inner
         f_minus_bp = (f - Bp_u, g - Bp_v)
 
-        for j in range(10):
+        r_u, r_v, r_div = compute_residuals_stokes(u, v, p, f, g, h, bcs)
+        norm_r0_vc = np.sqrt(np.sum(r_u ** 2) + np.sum(r_v ** 2) + np.sum(r_div ** 2))
+
+        for j in range(max_vc_iter):
             u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,nu1=3, nu2=3, min_N=4)
-        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=0, cg_tol = 1e-5)
+            r_u, r_v, r_div = compute_residuals_stokes(u, v, p, f, g, h, bcs)
+            norm_r_vc = np.sqrt(np.sum(r_u ** 2) + np.sum(r_v ** 2) + np.sum(r_div ** 2))
+            ratio_vc = norm_r_vc / norm_r0_vc
+
+            if ratio_vc <= 1e-2:
+                vc_total_iter += j+1
+                break
+        else:
+            vc_total_iter += max_vc_iter # for else条件控制，就是如果没有执行break的情况下结束了循环，else就会被执行。统计一下内层的vc迭代次数。
+        
+        u, v, p, _ = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=0, cg_tol = 1e-5) # 复用旧版的代码，令cg迭代次数为0来规避迭代次数很高的cg求解
+        # 精确求解速度方程的方法改为使用vcycle。
         
         # 强制压力零均值
         p -= np.mean(p)
@@ -150,7 +165,7 @@ def solve_problem_2(N, alpha=1.0, tol=1e-8, max_iter=10000):
     err_v_sq = np.sum((v - v_ex)**2)
     error_L2 = np.sqrt(h*h * (err_u_sq + err_v_sq))
     
-    print(f"Done Uzawa N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}")
+    print(f"Done Uzawa N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}, V-Cycle Iter={vc_total_iter}")
     
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex
 
@@ -190,7 +205,6 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
 
     bcs = {'b': bc_b, 't': bc_t, 'l': bc_l, 'r': bc_r}
 
-
     # -------------------------
     # 3. 初始残差
     # -------------------------
@@ -200,14 +214,11 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     print(f"N={N}, Initial Residual: {norm_r0:.4e}")
     start_time = time.time()
 
-
     # -------------------------
     # Uzawa参数
     # -------------------------
-   
-    iters = max_iter
+    total_cg_iter = 0
     for k in range(max_iter):
-
         # -------------------------------------------------
         # (1) 解A u = f - B p^k V-cycle预优，再CG精确解
         # -------------------------------------------------
@@ -223,7 +234,8 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
         u, v = v_cycle_velocity(u, v, f_minus_bp, h, bcs,
                                 nu1=3, nu2=3, min_N=4)
 
-        u, v, p = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=10, cg_tol=1e-2)
+        u, v, p, cg_iter = uzawa_step(u, v, p, f, g, h, bcs, alpha, max_cg_iter=10, cg_tol=1e-2)
+        total_cg_iter += cg_iter
         p -= np.mean(p)
 
 
@@ -243,6 +255,8 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
         if ratio <= tol:
             iters = k + 1
             break
+    else:
+        iters = max_iter
 
 
     # -------------------------
@@ -254,6 +268,6 @@ def solve_problem_3(N,alpha = 1.0, tol=1e-8, max_iter=100):
     err_v_sq = np.sum((v - v_ex)**2)
     error_L2 = np.sqrt(h*h * (err_u_sq + err_v_sq))
 
-    print(f"Done N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}")
+    print(f"Done N={N}. Iter={iters}, Time={cpu_time:.2f}s, Error={error_L2:.4e}, Total CG Iters={total_cg_iter}")
 
     return iters, cpu_time, error_L2, u, v, p, u_ex, v_ex, p_ex

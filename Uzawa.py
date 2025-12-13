@@ -50,8 +50,8 @@ def cg_solve_u(u, rhs, h, max_iter=200, tol=1e-10):
     
     for i in range(max_iter):
         if rsold * h**2 < tol: # note to normalize residual sqaured, otherwise it will be computation-expensive and ineffective.
-            iter = i
-            print(f'iteration stopped at {i}')
+            iter = i + 1
+            # print(f'iteration stopped at {i}')
             break
         
         # CG法计算逻辑
@@ -98,8 +98,8 @@ def cg_solve_v(v, rhs, h, max_iter=200, tol=1e-10):
     
     for i in range(max_iter):
         if rsold * h**2 < tol:
-            iter = i
-            print(f'iteration stopped at {i}')
+            iter = i + 1
+            # print(f'iteration stopped at {i}')
             break
             
         Ap = apply_laplacian_v_direction(p, h)
@@ -144,6 +144,7 @@ def uzawa_step(u, v, p, f, g, h, bcs, alpha: float = 1.0, max_cg_iter: int = 100
     u, u_iter = cg_solve_u(u, rhs_u_total, h, max_iter=max_cg_iter, tol=cg_tol)
     v, v_iter = cg_solve_v(v, rhs_v_total, h, max_iter=max_cg_iter, tol=cg_tol)
 
+    cg_iter = max(u_iter, v_iter)
     # print(f"CG for u used {u_iter} iterations, for v used {v_iter} iterations")
     
     # 3. 更新压力
@@ -154,4 +155,4 @@ def uzawa_step(u, v, p, f, g, h, bcs, alpha: float = 1.0, max_cg_iter: int = 100
     div_val = apply_divergence_uv(u, v, h)
     p = p - alpha * div_val
     
-    return u, v, p
+    return u, v, p, cg_iter
