@@ -3,6 +3,36 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from Solvers import solve_problem_1, solve_problem_2, solve_problem_3
 
+def estimate_convergence_order(df: pd.DataFrame, refinement_ratio: float = 2.0):
+    """
+    通过对整个误差轨迹的对数进行线性回归来估计收敛阶。
+
+    参数:
+    df (pd.DataFrame): DataFrame 中必须包含一个名为 'Error L2' 的列。
+    refinement_ratio (float): 每次迭代的细化率，
+                               例如，如果每次步长减半，则细化率为 2。
+                               您的原始代码中 np.log2 隐含了该值为 2。
+    """
+    # 过滤掉非正数的误差值，因为无法取对数
+    df_positive_error = df[df['Error L2'] > 0].copy()
+
+    if len(df_positive_error) < 2:
+        print("\n数据点不足（少于2个），无法估计收敛阶。")
+        return
+
+    log_error = np.log(df_positive_error['Error L2'].values)
+    iterations = np.arange(len(log_error))
+
+    # 使用 polyfit 进行一阶多项式拟合（即线性拟合）
+    # 返回值是 [斜率, 截距]
+    slope, intercept = np.polyfit(iterations, log_error, 1)
+
+    # 从斜率计算收敛阶 p
+    # slope = -p * log(refinement_ratio)
+    order = -slope / np.log(refinement_ratio)
+
+    return order
+
 def plot_solution(N, u, v, p, u_ex, v_ex, p_ex, method_idx: int):
     '''
     画图的辅助函数，做一个数值解和真解的对比图并存储。
@@ -118,8 +148,7 @@ def main():
     print(df)
     
     if len(df) >= 2:
-        error_ratio = df['Error L2'].iloc[-2] / df['Error L2'].iloc[-1]
-        order = np.log2(error_ratio)
+        order = estimate_convergence_order(df, 2.0)
         print(f"\nEstimated Convergence Order: {order:.2f}")
 
 if __name__ == "__main__":
